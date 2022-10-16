@@ -90,6 +90,9 @@
   - name: Instal CentOS 8 minimal package
     command: dnf -y groupupdate "Core" "Minimal Install"
 
+  - name: Reboot system
+    reboot:
+
   - name: Check CentOS version
     shell: |
       cat /etc/redhat-release
