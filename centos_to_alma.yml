@@ -1,0 +1,96 @@
+---
+
+- hosts: centos
+  become: true
+  tasks:
+
+  - name: Update yum and install required upgrade packages
+    yum:
+      name:
+        - epel-release
+        - yum-utils
+        - rpmconf
+      state: latest
+      update_cache: yes
+
+  - name: Resolve rpm Packages
+    command: rpmconf -a
+
+  - name: Package Cleanup Leaves
+    command: package-cleanup --leaves
+  
+  - name: Package Cleanup Orphans
+    command: package-cleanup --orphans
+
+  - name: Install dnf
+    yum:
+      name:
+        - dnf
+      state: latest
+      update_cache: yes
+
+  - name: Install rpm
+    yum:
+      name:
+        - rpm
+      state: latest
+      update_cache: yes
+
+  - name: Remove yum packages
+    dnf:
+      name:
+        - yum
+        - yum-metadata-parser
+      state: absent
+
+  - name: Remove yum directory
+    file:
+      path: /etc/yum
+      state: absent
+  
+  # Upgrade to CentOS 8
+  - name: Upgrade dnf
+    command: dnf upgrade
+
+  - name: Install CentOS 8 Release Package
+    dnf:
+      name: 
+        - 'https://vault.centos.org/8.5.2111/BaseOS/x86_64/os/Packages/centos-gpg-keys-8-3.el8.noarch.rpm'
+        - 'https://vault.centos.org/8.5.2111/BaseOS/x86_64/os/Packages/centos-linux-repos-8-3.el8.noarch.rpm'
+        - 'https://vault.centos.org/8.5.2111/BaseOS/x86_64/os/Packages/centos-linux-release-8.5-1.2111.el8.noarch.rpm'
+      state: present
+      disable_gpg_check: yes
+  
+  - name: Upgrade EPEL Repository
+    dnf:
+      name: 'https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm'
+      state: present
+      disable_gpg_check: yes
+
+  - name: Remove all temporary files
+    command: dnf clean all
+
+  - name: Remove kernel core for CentOS 7
+    command: rpm -e `rpm -q kernel`
+
+  - name: Remove conflicting packages
+    command: rpm -e --nodeps sysvinit-tools
+
+  - name: Launch CentOS 8 system upgrade
+    command: dnf -y --releasever=8 --allowerasing --setopt=deltarpm=false distro-sync
+
+  # Install new Kernel Core for CentOS 8
+  
+  - name: Install CentOS 8 Kernel Core
+    dnf:
+      name: kernel-core
+      state: present
+      update_cache: yes
+
+  - name: Instal CentOS 8 minimal package
+    command: dnf -y groupupdate "Core" "Minimal Install"
+
+  - name: Check CentOS version
+    shell: |
+      cat /etc/redhat-release
+    register: file_content
